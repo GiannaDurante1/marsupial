@@ -1,0 +1,212 @@
+---
+title: "BIOL595_Final"
+author: "Gianna Durante"
+date: "2025-04-23"
+output: html_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+setwd("/Users/giann/Desktop/Biol595_TOL/Project/") #set to Project Dir
+library(ape)
+library(ggtree)
+library(ggplot2)
+library(devtools)
+#library(apTreeshape)
+library(Biostrings)
+library(phangorn) 
+library(patchwork)
+```
+filter fasta files to just shared species
+```{r}
+
+# Read in DNA sequences
+apob_seq <- readDNAStringSet("data/apob_seq.fa")
+brca1_seq <- readDNAStringSet("data/brca1_seq.fa")
+cytb_seq <- readDNAStringSet("data/cytb_seq.fa")
+rag1_seq <- readDNAStringSet("data/rag1_seq.fa")
+
+# Function to extract species name (before first space in the sequence name)
+get_species <- function(seqset) {
+  sapply(strsplit(names(seqset), " "), `[`, 1)
+}
+
+# Get species names
+apob_spec <- get_species(apob_seq)
+brca1_spec <- get_species(brca1_seq)
+cytb_spec <- get_species(cytb_seq)
+rag1_spec <- get_species(rag1_seq)
+
+# Find common species across all four genes
+common_species <- Reduce(intersect, list(apob_spec, brca1_spec, cytb_spec, rag1_spec))
+common_species
+
+# Function to filter sequence set by species name
+filter_by_species <- function(seqset, spec_names) {
+  species <- get_species(seqset)
+  seqset[species %in% spec_names]
+}
+
+# Filter sequences by common species
+apob_seq_filtered <- filter_by_species(apob_seq, common_species)
+brca1_seq_filtered <- filter_by_species(brca1_seq, common_species)
+cytb_seq_filtered <- filter_by_species(cytb_seq, common_species)
+rag1_seq_filtered <- filter_by_species(rag1_seq, common_species)
+apob_seq_filtered
+# Optional: Save filtered sequences to new FASTA files
+writeXStringSet(apob_seq_filtered, "data/apob_filtered.fa")
+writeXStringSet(brca1_seq_filtered, "data/brca1_filtered.fa")
+writeXStringSet(cytb_seq_filtered, "data/cytb_filtered.fa")
+writeXStringSet(rag1_seq_filtered, "data/rag1_filtered.fa")
+
+apob_seq_filtered$
+
+```
+
+Make alignments from sequence files
+```{bash}
+muscleWin64.exe -in data/brca1_filtered.fa -out data/brca1_aligned.fa
+muscleWin64.exe -in data/apob_filtered.fa -out data/apob_aligned.fa #isnt working?
+muscleWin64.exe -in data/cytb_filtered.fa -out data/cytb_aligned.fa
+muscleWin64.exe -in data/rag1_filtered.fa -out data/rag1_aligned.fa
+#TODO add rpb and vwf??
+```
+ 
+```{r}
+```
+make gene trees using iqtree
+```{bash}
+./iqtree2.exe -s data/brca1_aligned.fa -B 1000 -T AUTO
+./iqtree2.exe -s data/apob_aligned.fa -B 1000 -T AUTO -redo
+./iqtree2.exe -s data/cytb_aligned.fa -B 1000 -T AUTO 
+./iqtree2.exe -s data/rag1_aligned.fa -B 1000 -T AUTO
+
+#TODO add rpb and vwf??
+```
+
+Read and Visualize apob gene tree
+```{r}
+apob_tree <- read.tree("data/apob_aligned.fa.treefile")
+apob_tree <- root(apob_tree, outgroup = "Mus_musculus", resolve.root = TRUE)
+apob_tree <- ladderize(apob_tree)
+
+apob_plot <- ggtree(apob_tree, branch.length = "none") +
+  geom_tiplab(size = 3) +
+  geom_nodelab(aes(label = label), color = "blue") +
+  ggtitle("APOB Phylogenetic Tree with Bootstrap Support") +
+  theme_tree2() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+print(apob_plot)
+ggsave("figures/apob_tree.png", plot = apob_plot, width = 20, height = 8, dpi = 300)
+```
+
+Read and Visualize brca1 gene tree
+```{r}
+brca1_tree <- read.tree("data/brca1_aligned.fa.treefile")
+brca1_tree <- root(brca1_tree, outgroup = "Mus_musculus", resolve.root = TRUE)
+brca1_tree <- ladderize(brca1_tree)
+
+brca1_plot <- ggtree(brca1_tree, branch.length = "none") +
+  geom_tiplab(size = 3) +
+  geom_nodelab(aes(label = label), color = "blue") +
+  ggtitle("BRCA1 Phylogenetic Tree with Bootstrap Support") +
+  theme_tree2() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+print(brca1_plot)
+ggsave("figures/brca1_tree.png", plot = brca1_plot, width = 20, height = 8, dpi = 300)
+
+```
+
+Read and Visualize Cytb gene tree
+```{r}
+cytb_tree <- read.tree("data/cytb_aligned.fa.treefile")
+cytb_tree <- root(cytb_tree, outgroup = "Mus_musculus", resolve.root = TRUE)
+cytb_tree <- ladderize(cytb_tree)
+
+cytb_plot <- ggtree(cytb_tree, branch.length = "none") +
+  geom_tiplab(size = 3) +
+  geom_nodelab(aes(label = label), color = "blue") +
+  ggtitle("CYTB Phylogenetic Tree with Bootstrap Support") +
+  theme_tree2() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+print(cytb_plot)
+ggsave("figures/cytb_tree.png", plot = cytb_plot, width = 20, height = 8, dpi = 300)
+
+```
+
+```{r}
+rag1_tree <- read.tree("data/rag1_aligned.fa.treefile")
+rag1_tree <- root(rag1_tree, outgroup = "Mus_musculus", resolve.root = TRUE)
+
+rag1_plot <- ggtree(rag1_tree, branch.length = "none") +
+  geom_tiplab(size = 3, angle = 45, align = TRUE) +
+  geom_nodelab(aes(label = label), color = "blue") +
+  ggtitle("RAG1 Phylogenetic Tree with Bootstrap Support") +
+  theme_tree2() +
+  theme(plot.title = element_text(hjust = 0.5))
+
+print(rag1_plot)
+ggsave("figures/rag1_tree.png", plot = rag1_plot, width = 20, height = 8, dpi = 300)
+```
+
+Get side by side with color coded bootstrap
+```{r fig.width=8}
+# Function to generate a ggtree plot with color-coded bootstrap support
+make_tree_plot <- function(tree, title) {
+ ggtree(tree, branch.length = "none") +
+  geom_tiplab(size = 3) +
+  geom_nodelab(aes(label = label), color = "blue")
+}
+
+# Create each tree plot
+p1 <- make_tree_plot(rag1_tree, "RAG1")
+p2 <- make_tree_plot(apob_tree, "APOB")
+p3 <- make_tree_plot(brca1_tree, "BRCA1")
+p4 <- make_tree_plot(cytb_tree, "CYTB")
+
+# Combine plots into a 2x2 grid
+combined_plot <- (p1 | p2) / (p3 | p4)
+
+# Print the final co
+print(combined_plot)
+```
+
+Get a consensus tree
+```{r}
+# nuclear DNA consensus
+tree_list <- c(brca1_tree, rag1_tree, apob_tree)
+plot(consensus(tree_list, p = .5))
+ggsave("figures/nuclearDNA_consensus.png", plot = con1, width = 20, height = 8, dpi = 300)
+
+# mtDNA + nuclear DNA consensus
+tree_list2 <- c(brca1_tree, rag1_tree, apob_tree, cytb_tree)
+plot(consensus(tree_list2, p = .5))
+
+```
+```{r}
+genetree_list_1 <- tree_list
+n_gene <- 3
+
+gt_distances<-c()
+for(i in 1:(n_gene-1)){
+  for (j in (i+1):n_gene){
+    # calculate one pairwise distance between
+    # genetree i and genetree j
+    tempDist<-RF.dist(genetree_list_1[[i]],genetree_list_1[[j]])
+    # store tempDist value into a vector
+    gt_distances<-c(gt_distances,tempDist)
+  }
+}
+
+ggplot(gt_distances, aes(x = x)) +
+  geom_histogram(binwidth = 0.5, fill = "steelblue", color = "black") +
+  labs(
+    title = "Histogram of Data",
+    x = "Value",            # X-axis label
+    y = "Frequency"         # Y-axis label
+  ) +
+  theme_minimal()```
